@@ -177,6 +177,18 @@ class ResultCacheTest extends DbalFunctionalTestCase
         self::assertCount(1, $layerCache->fetch('testcachekey'));
     }
 
+    public function testFetchAllColumn() : void
+    {
+        $qcp = new QueryCacheProfile(0, 0, new ArrayCache());
+
+        $stmt = $this->connection->executeCacheQuery('SELECT 1', [], [], $qcp);
+        $stmt->fetchAll(FetchMode::COLUMN);
+        $stmt->closeCursor();
+
+        $stmt = $this->connection->executeCacheQuery('SELECT 1', [], [], $qcp);
+        $stmt->fetchAll(FetchMode::COLUMN);
+    }
+
     /**
      * @param array<int, array<int, int|string>> $expectedResult
      */
