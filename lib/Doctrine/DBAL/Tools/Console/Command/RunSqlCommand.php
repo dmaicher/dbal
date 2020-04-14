@@ -2,6 +2,7 @@
 
 namespace Doctrine\DBAL\Tools\Console\Command;
 
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Tools\Dumper;
 use LogicException;
 use RuntimeException;
@@ -21,6 +22,20 @@ use function stripos;
  */
 class RunSqlCommand extends Command
 {
+    /**
+     * @var callable|null
+     */
+    private $connectionRegistry;
+
+    public function __construct(?callable $connectionRegistry = null)
+    {
+        parent::__construct();
+        $this->connectionRegistry = $connectionRegistry;
+        if (null === $connectionRegistry) {
+            @trigger_error('Not passing a connection registry callback as the first constructor argument is deprecated', E_USER_DEPRECATED);
+        }
+    }
+
     /** @return void */
     protected function configure()
     {
@@ -28,6 +43,7 @@ class RunSqlCommand extends Command
         ->setName('dbal:run-sql')
         ->setDescription('Executes arbitrary SQL directly from the command line.')
         ->setDefinition([
+            new InputOption('connection', null, InputOption::VALUE_REQUIRED, 'The named database connection'),
             new InputArgument('sql', InputArgument::REQUIRED, 'The SQL statement to execute.'),
             new InputOption('depth', null, InputOption::VALUE_REQUIRED, 'Dumping depth of result set.', 7),
             new InputOption('force-fetch', null, InputOption::VALUE_NONE, 'Forces fetching the result.'),
@@ -43,7 +59,13 @@ EOT
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $conn = $this->getHelper('db')->getConnection();
+        if (null !== $this->connectionRegistry) {
+            $conn = call_user_func($this->connectionRegistry, [$input->getOption('connection')]);
+        } else {
+            // TODO: trigger another deprecation?
+            // TODO: exception in case connection option is specified?
+            $conn = $this->getHelper('db')->getConnection();
+        }
 
         $sql = $input->getArgument('sql');
 
